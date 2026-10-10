@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق القرآن الكريم والأصوات الهادئة</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome v6 for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Cairo & Amiri -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: 'rgb(16, 16, 16)',
+                        secColor: 'rgb(22, 53, 54)',
+                        secHover: 'rgb(30, 72, 74)',
+                        accentGold: 'rgb(212, 175, 55)',
+                    },
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                        amiri: ['Amiri', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: rgb(16, 16, 16);
+            color: #f3f4f6;
+            font-family: 'Cairo', sans-serif;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .quran-title {
+            font-family: 'Amiri', serif;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgb(16, 16, 16);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgb(22, 53, 54);
+            border-radius: 4px;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(22, 53, 54, 0.8); }
+            50% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.4); }
+        }
+
+        .playing-glow {
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+
+        @keyframes waveAnim {
+            0% { transform: scaleY(0.4); }
+            50% { transform: scaleY(1); }
+            100% { transform: scaleY(0.4); }
+        }
+
+        .bar-1 { animation: waveAnim 1s infinite ease-in-out; }
+        .bar-2 { animation: waveAnim 0.7s infinite ease-in-out; }
+        .bar-3 { animation: waveAnim 1.2s infinite ease-in-out; }
+
+        .modal-backdrop {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* Square button with white hover state */
+        .square-btn {
+            border-radius: 8px !important;
+            transition: all 0.3s ease;
+        }
+        .square-btn:hover {
+            background-color: #ffffff !important;
+            color: rgb(16, 16, 16) !important;
+        }
+        .square-btn:hover i {
+            color: rgb(16, 16, 16) !important;
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-100 min-h-screen flex flex-col justify-between selection:bg-secColor selection:text-white">
+
+    <!-- Navbar -->
+    <header class="w-full bg-[rgb(16,16,16)]/90 backdrop-blur-md border-b border-[rgb(22,53,54)]/40 sticky top-0 z-40 px-4 py-3">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="w-10 h-10 square-btn bg-[rgb(22,53,54)] flex items-center justify-center border border-[rgb(30,72,74)] shadow-lg">
+                    <span class="quran-title text-xl text-[rgb(212,175,55)] font-bold">ق</span>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base text-gray-100 tracking-wide">القرآن الكريم والطبيعة</h1>
+                    <p class="text-xs text-gray-400">استماع هادئ وتدبر مبارك</p>
+                </div>
+            </div>
+            <!-- Settings Button -->
+            <button id="settingsBtn" onclick="openSettingsModal()" class="w-10 h-10 square-btn bg-[rgb(22,53,54)] hover:bg-white border border-[rgb(35,85,87)] flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md group">
+                <i class="fa-solid fa-gear text-gray-300 group-hover:text-darkBg transition-colors"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="w-full max-w-md mx-auto px-4 py-5 flex-1 flex flex-col space-y-5">
+        
+        <!-- Single Master Box Div -->
+        <div class="bg-[rgb(22,53,54)]/20 border border-[rgb(22,53,54)] rounded-2xl p-5 shadow-2xl backdrop-blur-sm relative overflow-hidden transition-all duration-300" id="masterBox">
+            <div class="absolute -top-12 -left-12 w-32 h-32 bg-[rgb(22,53,54)] rounded-full opacity-20 pointer-events-none blur-2xl"></div>
+            
+            <!-- SECTION 1: QURAN PLAYER -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2 space-x-reverse">
+                        <i class="fa-solid fa-book-quran text-[rgb(212,175,55)]"></i>
+                        <h2 class="font-bold text-sm tracking-wide text-gray-200">مشغل القرآن الكريم</h2>
+                    </div>
+                    <span id="playingStatusBadge" class="text-[11px] bg-[rgb(22,53,54)] text-gray-300 px-2.5 py-0.5 rounded border border-[rgb(35,85,87)]">متوقف</span>
+                </div>
+
+                <!-- Reciter Selection -->
+                <div class="mb-3.5">
+                    <label for="reciterSelect" class="block text-xs text-gray-400 mb-1 font-semibold">اختر القارئ:</label>
+                    <div class="relative">
+                        <select id="reciterSelect" class="w-full bg-[rgb(16,16,16)] border border-[rgb(22,53,54)] rounded-lg px-3.5 py-2.5 text-xs text-gray-200 focus:outline-none focus:border-[rgb(212,175,55)] transition-all appearance-none cursor-pointer">
+                            <!-- Populated via JS -->
+                        </select>
+                        <div class="absolute inset-y-0 left-0 flex items-center px-3 pointer-events-none text-gray-400">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Surah Selection -->
+                <div class="mb-4">
+                    <label for="surahSelect" class="block text-xs text-gray-400 mb-1 font-semibold">اختر السورة (114 سورة):</label>
+                    <div class="relative">
+                        <select id="surahSelect" class="w-full bg-[rgb(16,16,16)] border border-[rgb(22,53,54)] rounded-lg px-3.5 py-2.5 text-xs text-gray-200 focus:outline-none focus:border-[rgb(212,175,55)] transition-all appearance-none cursor-pointer">
+                            <!-- Populated via JS -->
+                        </select>
+                        <div class="absolute inset-y-0 left-0 flex items-center px-3 pointer-events-none text-gray-400">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Surah Banner -->
+                <div class="bg-[rgb(16,16,16)]/70 rounded-xl p-3 mb-4 border border-[rgb(22,53,54)]/80 flex items-center justify-between">
+                    <div>
+                        <h3 id="currentSurahTitle" class="quran-title text-base font-bold text-[rgb(212,175,55)]">سورة الفاتحة</h3>
+                        <p id="currentReciterName" class="text-[11px] text-gray-400">عبد الباسط عبد الصمد</p>
+                    </div>
+                    <div id="audioWave" class="hidden items-center space-x-1 space-x-reverse h-5 px-2">
+                        <span class="w-1 bg-[rgb(212,175,55)] rounded-full bar-1 h-full"></span>
+                        <span class="w-1 bg-[rgb(212,175,55)] rounded-full bar-2 h-3"></span>
+                        <span class="w-1 bg-[rgb(212,175,55)] rounded-full bar-3 h-4"></span>
+                    </div>
+                </div>
+
+                <!-- Quran Play / Stop Square Button -->
+                <button id="quranPlayBtn" onclick="toggleQuranPlay()" class="w-full py-3 px-5 square-btn bg-[rgb(22,53,54)] hover:bg-white border border-[rgb(35,85,87)] text-white hover:text-darkBg font-bold text-xs flex items-center justify-center space-x-2 space-x-reverse shadow-md group">
+                    <i id="playBtnIcon" class="fa-solid fa-play text-[rgb(212,175,55)] group-hover:text-darkBg transition-colors"></i>
+                    <span id="playBtnText">تشغيل القرآن</span>
+                </button>
+
+                <!-- Quran Volume Control -->
+                <div class="mt-3.5 pt-3 border-t border-[rgb(22,53,54)]/40 flex items-center space-x-3 space-x-reverse">
+                    <i class="fa-solid fa-volume-high text-xs text-gray-400 shrink-0"></i>
+                    <div class="flex-1 flex flex-col">
+                        <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+                            <span>مستوى صوت القرآن</span>
+                            <span id="quranVolumeVal">100%</span>
+                        </div>
+                        <input type="range" id="quranVolume" min="0" max="100" value="100" oninput="updateQuranVolume(this.value)" class="w-full accent-[rgb(212,175,55)] bg-gray-700 rounded-lg appearance-none h-1 cursor-pointer">
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLEAN DIVIDING LINE SEPARATING THE TWO SECTIONS -->
+            <div class="my-5 border-t border-[rgb(22,53,54)]/80"></div>
+
+            <!-- SECTION 2: AMBIENT NATURE SOUND MIXER -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2 space-x-reverse">
+                        <i class="fa-solid fa-cloud-rain text-cyan-400"></i>
+                        <h2 class="font-bold text-sm tracking-wide text-gray-200">أصوات الطبيعة والهدوء</h2>
+                    </div>
+                    <span class="text-[10px] text-gray-400">تشغيل متزامن</span>
+                </div>
+                <p class="text-[11px] text-gray-400 mb-4 leading-relaxed">
+                    شغل أصوات الرياح، المطر، أو النار بالتوازي مع القرآن وتحكم بمستوى صوت كل منها.
+                </p>
+
+                <!-- Ambient Sounds Container -->
+                <div id="ambientContainer" class="space-y-3">
+                    <!-- Injected dynamically via JS -->
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 modal-backdrop opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="settingsBox" class="bg-[rgb(16,16,16)] border border-[rgb(22,53,54)] rounded-2xl p-6 w-full max-w-xs shadow-2xl transform scale-95 transition-transform duration-300 relative text-center">
+            <div class="w-12 h-12 square-btn bg-[rgb(22,53,54)] border border-[rgb(30,72,74)] flex items-center justify-center mx-auto mb-4 text-[rgb(212,175,55)] shadow-lg">
+                <i class="fa-solid fa-gear text-lg animate-spin" style="animation-duration: 10s;"></i>
+            </div>
+            <h3 class="font-bold text-base text-gray-100 mb-2">خاصية الإعدادات</h3>
+            <p class="text-xs text-gray-400 mb-5 leading-relaxed">
+                خاصية الإعدادات ستتوفر قريبا إن شاء الله في التحديث القادم لتخصيص الواجهة وحفظ المفضلة.
+            </p>
+            <button onclick="closeSettingsModal()" class="w-full py-2.5 square-btn bg-[rgb(22,53,54)] hover:bg-white border border-[rgb(35,85,87)] text-white hover:text-darkBg font-bold text-xs transition-all shadow-md">
+                حسناً، فهمت
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w-full py-3 text-center text-[11px] text-gray-500 border-t border-[rgb(22,53,54)]/30 mt-auto">
+        <p>تطبيق القرآن الكريم والأصوات الهادئة © 2026</p>
+    </footer>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        // Renowned Reciters with robust audio server links
+        const reciters = [
+            { id: 'abdulbasit', name: 'الشيخ عبد الباسط عبد الصمد (مرتل)', server: 'https://server7.mp3quran.net/basit/' },
+            { id: 'mishary', name: 'الشيخ مشاري راشد العفاسي', server: 'https://server8.mp3quran.net/afs/' },
+            { id: 'sudais', name: 'الشيخ عبد الرحمن السديس', server: 'https://server11.mp3quran.net/sds/' },
+            { id: 'shuraim', name: 'الشيخ سعود الشريم', server: 'https://server7.mp3quran.net/shur/' },
+            { id: 'minshawi', name: 'الشيخ محمد صديق المنشاوي (مرتل)', server: 'https://server10.mp3quran.net/minsh/' },
+            { id: 'dosari', name: 'الشيخ ياسر الدوسري', server: 'https://server11.mp3quran.net/yasser/' },
+            { id: 'ajamy', name: 'الشيخ أحمد العجمي', server: 'https://server10.mp3quran.net/ajm/' },
+            { id: 'maher', name: 'الشيخ ماهر المعيقلي', server: 'https://server12.mp3quran.net/maher/' },
+            { id: 'hudhaify', name: 'الشيخ علي الحذيفي', server: 'https://server9.mp3quran.net/hthfi/' },
+            { id: 'ghamdi', name: 'الشيخ سعد الغامدي', server: 'https://server7.mp3quran.net/s_gmd/' },
+            { id: 'alemadi', name: 'الشيخ أنس العمادي', server: 'https://server16.mp3quran.net/a_alemadi/Rewayat-Hafs-A-n-Assem/' },
+            { id: 'jazairy', name: 'الشيخ ياسين الجزائري (رواية ورش)', server: 'https://server11.mp3quran.net/qari/' },
+            { id: 'luhaidan', name: 'الشيخ محمد اللحيدان', server: 'https://server8.mp3quran.net/lhdan/' },
+            { id: 'aloosi', name: 'الشيخ عبد الرحمن العوسي', server: 'https://server6.mp3quran.net/aloosi/' },
+            { id: 'suhaim', name: 'الشيخ عبد العزيز سحيم (رواية ورش - بعض السور)', server: 'https://server16.mp3quran.net/a_sheim/Rewayat-Warsh-A-n-Nafi/', surahs: [1,18,31,50,56,67,72,75,112] }
+        ];
+
+        // All 114 Surahs of the Holy Quran
+        const surahs = [
+            "الفاتحة", "البقرة", "آل عمران", "النساء", "المائدة", "الأنعام", "الأعراف", "الأنفال", "التوبة", "يونس",
+            "هود", "يوسف", "الرعد", "إبراهيم", "الحجر", "النحل", "الإسراء", "الكهف", "مريم", "طه",
+            "الأنبياء", "الحج", "المؤمنون", "النور", "الفرقان", "الشعراء", "النمل", "القصص", "العنكبوت", "الروم",
+            "لقمان", "السجدة", "الأحزاب", "سبأ", "فاطر", "يس", "الصافات", "ص", "الزمر", "غافر",
+            "فصلت", "الشورى", "الزخرف", "الدخان", "الجاثية", "الأحقاف", "محمد", "الفتح", "الحجرات", "ق",
+            "الذاريات", "الطور", "النجم", "القمر", "الرحمن", "الواقعة", "الحديد", "المجادلة", "الحشر", "الممتحنة",
+            "الصف", "الجُمُعة", "المنافقون", "التغابن", "الطلاق", "التحريم", "الملك", "القلم", "الحاقة", "المعارج",
+            "نوح", "الجن", "المزمل", "المدثر", "القيامة", "الإنسان", "المرسلات", "النبأ", "النازعات", "عبس",
+            "التكوير", "الانفطار", "المطففين", "الانشقاق", "البروج", "الطارق", "الأعلى", "الغاشية", "الفجر", "البلد",
+            "الشمس", "الليل", "الضحى", "الشرح", "التين", "العلق", "القدر", "البينة", "الزلزلة",
+            "العاديات", "القارعة", "التكاثر", "العصر", "الهمزة", "الفيل", "قريش", "الماعون", "الكوثر", "الكافرون",
+            "النصر", "المسد", "الإخلاص", "الفلق", "الناس"
+        ];
+
+        // Ambient Nature Sounds data with FontAwesome icon classes instead of emojis
+        const ambientSounds = [
+            { id: 'rain', name: 'صوت المطر', icon: 'fa-cloud-rain', url: 'https://upload.wikimedia.org/wikipedia/commons/5/55/Garden_rainfall.ogg',
+              mp3: 'https://upload.wikimedia.org/transcoded/5/55/Garden_rainfall.ogg/Garden_rainfall.ogg.mp3',
+              alt: ['https://upload.wikimedia.org/wikipedia/commons/1/15/Sound_of_light_rainfall.ogg', 'https://upload.wikimedia.org/transcoded/1/15/Sound_of_light_rainfall.ogg/Sound_of_light_rainfall.ogg.mp3'] },
+            { id: 'fire', name: 'صوت النار الخافتة', icon: 'fa-fire', url: 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Campfire_sound_ambience.ogg',
+              mp3: 'https://upload.wikimedia.org/transcoded/b/b1/Campfire_sound_ambience.ogg/Campfire_sound_ambience.ogg.mp3' },
+            { id: 'thunder', name: 'صوت الرعد', icon: 'fa-bolt', url: 'https://upload.wikimedia.org/wikipedia/commons/5/54/Thunder_Claps.ogg',
+              mp3: 'https://upload.wikimedia.org/transcoded/5/54/Thunder_Claps.ogg/Thunder_Claps.ogg.mp3',
+              alt: ['https://upload.wikimedia.org/wikipedia/commons/c/c8/Tonitrus.ogg', 'https://upload.wikimedia.org/transcoded/c/c8/Tonitrus.ogg/Tonitrus.ogg.mp3'] },
+            { id: 'waves', name: 'أمواج البحر', icon: 'fa-water', url: 'https://upload.wikimedia.org/wikipedia/commons/b/b0/Lake_Okeechobee_Surf_in_April_2016.ogg',
+              mp3: 'https://upload.wikimedia.org/transcoded/b/b0/Lake_Okeechobee_Surf_in_April_2016.ogg/Lake_Okeechobee_Surf_in_April_2016.ogg.mp3' },
+            { id: 'birds', name: 'عصافير الصباح', icon: 'fa-dove', url: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Birdsong_morning_01.ogg',
+              mp3: 'https://upload.wikimedia.org/transcoded/e/e7/Birdsong_morning_01.ogg/Birdsong_morning_01.ogg.mp3' }
+        ];
+
+        let currentQuranAudio = new Audio();
+        let isQuranPlaying = false;
+        let ambientAudioElements = {};
+        let ambientStates = {};
+
+        window.addEventListener('DOMContentLoaded', () => {
+            populateReciters();
+            populateSurahs();
+            populateAmbientSounds();
+
+            currentQuranAudio.addEventListener('ended', () => {
+                stopQuranPlayUI();
+            });
+            currentQuranAudio.addEventListener('error', () => {
+                stopQuranPlayUI();
+                showNotification('عذراً، تعذر تشغيل السورة المختارة. يرجى التحقق من الاتصال أو اختيار قارئ آخر.');
+            });
+        });
+
+        function populateReciters() {
+            const select = document.getElementById('reciterSelect');
+            reciters.forEach((reciter, index) => {
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.textContent = reciter.name;
+                select.appendChild(opt);
+            });
+            select.addEventListener('change', updateActiveDisplay);
+        }
+
+        function populateSurahs() {
+            const select = document.getElementById('surahSelect');
+            surahs.forEach((surahName, index) => {
+                const opt = document.createElement('option');
+                opt.value = index + 1;
+                opt.textContent = `${index + 1}. سورة ${surahName}`;
+                select.appendChild(opt);
+            });
+            select.addEventListener('change', updateActiveDisplay);
+        }
+
+        function updateActiveDisplay() {
+            const reciterIndex = document.getElementById('reciterSelect').value;
+            const surahNumber = document.getElementById('surahSelect').value;
+            
+            document.getElementById('currentReciterName').textContent = reciters[reciterIndex].name;
+            document.getElementById('currentSurahTitle').textContent = `سورة ${surahs[surahNumber - 1]}`;
+
+            if (isQuranPlaying) {
+                playQuranAudio(false);
+            }
+        }
+
+        function formatSurahNumber(num) {
+            return String(num).padStart(3, '0');
+        }
+
+        function toggleQuranPlay() {
+            if (isQuranPlaying) {
+                currentQuranAudio.pause();
+                stopQuranPlayUI();
+            } else {
+                playQuranAudio(true);
+            }
+        }
+
+        function playQuranAudio(shouldPlay = true) {
+            const reciterIndex = document.getElementById('reciterSelect').value;
+            const surahNumber = document.getElementById('surahSelect').value;
+            const formattedSurah = formatSurahNumber(surahNumber);
+            const reciterObj = reciters[reciterIndex];
+            if (reciterObj.surahs && !reciterObj.surahs.includes(Number(surahNumber))) {
+                showNotification('هذه السورة غير متوفرة بصوت هذا القارئ، اختر سورة أخرى أو قارئاً آخر.');
+                currentQuranAudio.pause();
+                stopQuranPlayUI();
+                return;
+            }
+            const audioUrl = `${reciters[reciterIndex].server}${formattedSurah}.mp3`;
+
+            if (currentQuranAudio.src !== audioUrl) {
+                currentQuranAudio.src = audioUrl;
+                currentQuranAudio.load();
+            }
+
+            if (shouldPlay) {
+                currentQuranAudio.play().then(() => {
+                    startQuranPlayUI();
+                }).catch(err => {
+                    console.error("Quran playback error:", err);
+                    showNotification('تعذر بدء التشغيل التلقائي. يرجى النقر مرة أخرى.');
+                    stopQuranPlayUI();
+                });
+            }
+        }
+
+        function startQuranPlayUI() {
+            isQuranPlaying = true;
+            document.getElementById('playingStatusBadge').textContent = 'قيد التشغيل';
+            document.getElementById('playingStatusBadge').className = 'text-[11px] bg-emerald-900/60 text-emerald-300 px-2.5 py-0.5 rounded border border-emerald-700/50';
+            document.getElementById('playBtnText').textContent = 'إيقاف القرآن';
+            document.getElementById('playBtnIcon').className = 'fa-solid fa-stop text-[rgb(212,175,55)] group-hover:text-darkBg transition-colors';
+            document.getElementById('masterBox').classList.add('playing-glow');
+            document.getElementById('audioWave').classList.remove('hidden');
+            document.getElementById('audioWave').classList.add('flex');
+        }
+
+        function stopQuranPlayUI() {
+            isQuranPlaying = false;
+            document.getElementById('playingStatusBadge').textContent = 'متوقف';
+            document.getElementById('playingStatusBadge').className = 'text-[11px] bg-[rgb(22,53,54)] text-gray-300 px-2.5 py-0.5 rounded border border-[rgb(35,85,87)]';
+            document.getElementById('playBtnText').textContent = 'تشغيل القرآن';
+            document.getElementById('playBtnIcon').className = 'fa-solid fa-play text-[rgb(212,175,55)] group-hover:text-darkBg transition-colors';
+            document.getElementById('masterBox').classList.remove('playing-glow');
+            document.getElementById('audioWave').classList.add('hidden');
+            document.getElementById('audioWave').classList.remove('flex');
+        }
+
+        function updateQuranVolume(val) {
+            currentQuranAudio.volume = val / 100;
+            document.getElementById('quranVolumeVal').textContent = `${val}%`;
+        }
+
+        // Ambient Nature Sounds Logic
+        function populateAmbientSounds() {
+            const container = document.getElementById('ambientContainer');
+            ambientSounds.forEach(sound => {
+                ambientStates[sound.id] = false;
+                
+                const audio = new Audio();
+                // Ogg first (Chrome/Firefox); MP3 version first on browsers without Ogg support (Safari/iOS)
+                const canOgg = !!audio.canPlayType('audio/ogg; codecs="vorbis"');
+                audio._srcs = (canOgg ? [sound.url, sound.mp3] : [sound.mp3, sound.url]).concat(sound.alt || []);
+                audio._idx = 0;
+                audio.src = audio._srcs[0];
+                audio.preload = 'none';
+                audio.loop = true;
+                audio.volume = 0.5;
+                ambientAudioElements[sound.id] = audio;
+
+                const itemBox = document.createElement('div');
+                itemBox.id = `ambient-item-${sound.id}`;
+                itemBox.className = 'bg-[rgb(16,16,16)]/70 border border-[rgb(22,53,54)]/60 rounded-xl p-3 transition-all duration-300';
+                itemBox.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2.5 space-x-reverse">
+                            <i class="fa-solid ${sound.icon} text-[rgb(212,175,55)] text-sm w-5 text-center"></i>
+                            <span class="font-bold text-xs text-gray-200">${sound.name}</span>
+                        </div>
+                        <button onclick="toggleAmbient('${sound.id}')" id="ambient-btn-${sound.id}" class="px-3 py-1.5 square-btn bg-[rgb(22,53,54)] hover:bg-white border border-[rgb(35,85,87)] text-xs text-gray-200 hover:text-darkBg font-bold transition-all active:scale-95 flex items-center space-x-1 space-x-reverse group">
+                            <i class="fa-solid fa-play text-[10px]"></i>
+                            <span>تشغيل</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-3 space-x-reverse mt-2">
+                        <span class="text-[10px] text-gray-400">الصوت</span>
+                        <input type="range" min="0" max="100" value="50" oninput="updateAmbientVolume('${sound.id}', this.value)" class="w-full accent-[rgb(212,175,55)] bg-gray-700 rounded-lg appearance-none h-1 cursor-pointer">
+                    </div>
+                `;
+                container.appendChild(itemBox);
+            });
+        }
+
+        // Try the next source if the current one fails to load
+        function playAmbientWithFallback(audio) {
+            return audio.play().catch(err => {
+                if (audio._idx < audio._srcs.length - 1) {
+                    audio._idx++;
+                    audio.src = audio._srcs[audio._idx];
+                    return audio.play();
+                }
+                throw err;
+            });
+        }
+
+        function toggleAmbient(id) {
+            const audio = ambientAudioElements[id];
+            const btn = document.getElementById(`ambient-btn-${id}`);
+            const itemBox = document.getElementById(`ambient-item-${id}`);
+
+            if (ambientStates[id]) {
+                audio.pause();
+                ambientStates[id] = false;
+                btn.innerHTML = '<i class="fa-solid fa-play text-[10px]"></i><span>تشغيل</span>';
+                btn.className = 'px-3 py-1.5 square-btn bg-[rgb(22,53,54)] hover:bg-white border border-[rgb(35,85,87)] text-xs text-gray-200 hover:text-darkBg font-bold transition-all active:scale-95 flex items-center space-x-1 space-x-reverse group';
+                itemBox.classList.remove('border-[rgb(212,175,55)]/50', 'bg-[rgb(22,53,54)]/30');
+            } else {
+                playAmbientWithFallback(audio).then(() => {
+                    ambientStates[id] = true;
+                    btn.innerHTML = '<i class="fa-solid fa-stop text-[10px]"></i><span>إيقاف</span>';
+                    btn.className = 'px-3 py-1.5 square-btn bg-emerald-900/80 hover:bg-white border border-emerald-700 text-xs text-emerald-200 hover:text-darkBg font-bold transition-all active:scale-95 flex items-center space-x-1 space-x-reverse group';
+                    itemBox.classList.add('border-[rgb(212,175,55)]/50', 'bg-[rgb(22,53,54)]/30');
+                }).catch(err => {
+                    console.error("Ambient audio error:", err);
+                    showNotification('تعذر تشغيل الصوت الطبيعي. يرجى المحاولة لاحقاً.');
+                });
+            }
+        }
+
+        function updateAmbientVolume(id, val) {
+            if (ambientAudioElements[id]) {
+                ambientAudioElements[id].volume = val / 100;
+            }
+        }
+
+        // Settings Modal
+        function openSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            const box = document.getElementById('settingsBox');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            box.classList.remove('scale-95');
+            box.classList.add('scale-100');
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            const box = document.getElementById('settingsBox');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            box.classList.remove('scale-100');
+            box.classList.add('scale-95');
+        }
+
+        // Toast notification helper
+        function showNotification(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-[rgb(22,53,54)] border border-[rgb(212,175,55)] text-gray-100 text-xs px-4 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 font-semibold text-center max-w-xs';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
